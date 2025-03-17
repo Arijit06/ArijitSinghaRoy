@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { 
   LaptopCode, 
-  Browsers, 
+  Browser,  // Changed from Browsers to Browser
   Share2, 
   Smartphone, 
   Cog, 
@@ -24,7 +24,7 @@ const projects = [
     id: 2,
     title: "Cross-Browser Testing",
     tools: "Selenium Grid, Chrome, Edge",
-    icon: <Browsers className="h-10 w-10 text-blue-500" />,
+    icon: <Browser className="h-10 w-10 text-blue-500" />, // Changed from Browsers to Browser
     achievements: [
       "Conducted cross-browser tests to ensure compatibility across Chrome and Edge.",
       "Utilized Selenium Grid for parallel execution, reducing overall test execution time."
