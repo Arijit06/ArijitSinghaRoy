@@ -1,8 +1,7 @@
-
 import { useState } from "react";
 import { 
-  LaptopCode, 
-  Browser,  // Changed from Browsers to Browser
+  Laptop, 
+  Globe, 
   Share2, 
   Smartphone, 
   Cog, 
@@ -14,7 +13,7 @@ const projects = [
     id: 1,
     title: "Test Automation Framework Development",
     tools: "Selenium, Java, TestNG, Jenkins",
-    icon: <LaptopCode className="h-10 w-10 text-blue-500" />,
+    icon: <Laptop className="h-10 w-10 text-blue-500" />,
     achievements: [
       "Developed and optimized test automation frameworks, achieving a 90% reduction in manual testing efforts.",
       "Automated over 80 test cases, ensuring robust test coverage."
@@ -24,7 +23,7 @@ const projects = [
     id: 2,
     title: "Cross-Browser Testing",
     tools: "Selenium Grid, Chrome, Edge",
-    icon: <Browser className="h-10 w-10 text-blue-500" />, // Changed from Browsers to Browser
+    icon: <Globe className="h-10 w-10 text-blue-500" />,
     achievements: [
       "Conducted cross-browser tests to ensure compatibility across Chrome and Edge.",
       "Utilized Selenium Grid for parallel execution, reducing overall test execution time."
