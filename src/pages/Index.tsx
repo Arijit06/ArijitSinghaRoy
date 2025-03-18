@@ -18,13 +18,13 @@ const Index = () => {
     window.addEventListener("scroll", handleScroll);
     
     // Welcome toast when page loads
-    setTimeout(() => {
+    /*setTimeout(() => {
       toast({
         title: "Welcome to my portfolio!",
         description: "Feel free to explore my projects and get in touch.",
         duration: 5000,
       });
-    }, 1000);
+    }, 1000);*/
     
     return () => window.removeEventListener("scroll", handleScroll);
   }, [toast]);
