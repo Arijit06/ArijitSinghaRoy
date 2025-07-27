@@ -122,7 +122,7 @@ const PortfolioSection = () => {
     ];
     
     let currentStage = 0;
-    const totalDuration = 3000; // Reduced from 5000ms to 3000ms
+    const totalDuration = 1900; // 1.9 seconds total animation time
     const stageInterval = totalDuration / loadingStages.length;
     
     const interval = setInterval(() => {
@@ -136,7 +136,7 @@ const PortfolioSection = () => {
         setTimeout(() => {
           setLoading(false);
           setShowContent(true);
-        }, 500); // Reduced from 800ms to 500ms
+        }, 200); // Reduced to 200ms for faster transition
       }
     }, stageInterval);
     
@@ -150,7 +150,7 @@ const PortfolioSection = () => {
         projects.forEach((project, index) => {
           setTimeout(() => {
             setLoadedProjects(prev => [...prev, project.id]);
-          }, index * 200); // Reduced from 400ms to 200ms
+          }, index * 100); // Reduced to 100ms for faster project loading
         });
       };
       
@@ -159,14 +159,14 @@ const PortfolioSection = () => {
   }, [loading, showContent]);
   
   const getProjectAnimationClass = (projectId: number) => {
-    if (!loadedProjects.includes(projectId)) return "opacity-0 translate-y-16"; // Reduced from 20 to 16 for faster animation
+    if (!loadedProjects.includes(projectId)) return "opacity-0 translate-y-8"; // Reduced to 8 for faster animation
     return "opacity-100 translate-y-0";
   };
   
   return (
     <section id="portfolio" ref={sectionRef} className="py-20 px-4 bg-black/70">
       <div className="container mx-auto">
-        <h2 className="text-4xl font-bold mb-12 text-center">Portfolio</h2>
+        <h2 className="text-4xl font-bold mb-12 text-center">portfolio</h2>
         
         {!hasScrolled ? (
           <div className="max-w-md mx-auto space-y-6">
@@ -222,7 +222,7 @@ const PortfolioSection = () => {
             {projects.map((project) => (
               <div 
                 key={project.id}
-                className={`bg-white/10 p-6 rounded-lg transition-all duration-700 ${
+                className={`bg-white/10 p-6 rounded-lg transition-all duration-300 ${
                   getProjectAnimationClass(project.id)
                 } ${
                   hoveredProject === project.id ? 'transform -translate-y-3 shadow-lg shadow-gray-500/20' : ''
@@ -256,7 +256,7 @@ const PortfolioSection = () => {
                             ? 'opacity-100 translate-x-0'
                             : 'opacity-0 -translate-x-6'
                       }`}
-                      style={{ transitionDelay: `${index * 150}ms` }}
+                      style={{ transitionDelay: `${index * 60}ms` }}
                     >
                       {achievement}
                     </li>
