@@ -1,0 +1,33 @@
+name: Trigger Portfolio Tests
+
+on:
+  push:
+    branches: [ main, master ]  # Adjust to match your default branch name
+  workflow_dispatch:
+
+jobs:
+  trigger-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger tests in test repository
+        run: |
+          curl -X POST \
+          -H "Authorization: token ${{ secrets.TEST_TRIGGER_TOKEN }}" \
+          -H "Accept: application/vnd.github.v3+json" \
+          https://api.github.com/repos/Arijit06/CI-CD-Integration-with-Selenium-Java-/dispatches \
+          -d '{
+            "event_type": "portfolio-updated",
+            "client_payload": {
+              "portfolio_url": "https://arijit06.github.io/ArijitSinghaRoy/",
+              "commit_sha": "${{ github.sha }}",
+              "commit_message": "${{ github.event.head_commit.message }}",
+              "branch": "${{ github.ref_name }}",
+              "pusher": "${{ github.event.head_commit.author.name }}"
+            }
+          }'
+      
+      - name: Confirm trigger sent
+        run: |
+          echo "✅ Test trigger sent to test repository"
+          echo "Portfolio URL: https://arijit06.github.io/ArijitSinghaRoy/"
+          echo "Commit SHA: ${{ github.sha }}"
