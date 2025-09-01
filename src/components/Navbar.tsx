@@ -1,48 +1,46 @@
 import { useState, useEffect } from "react";
 import { Menu } from "lucide-react";
-import { useLocation } from "react-router-dom";
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("home");
-  const location = useLocation();
   
   useEffect(() => {
-    // Only handle scroll events on the home page
-    if (location.pathname === "/") {
-      const handleScroll = () => {
-        const homeSection = document.getElementById("home");
-        const portfolioSection = document.getElementById("portfolio");
-        const contactSection = document.getElementById("contact");
-        
-        const scrollPosition = window.scrollY + 100;
-        
-        if (
-          homeSection &&
-          scrollPosition >= homeSection.offsetTop &&
-          scrollPosition < (portfolioSection?.offsetTop || 0)
-        ) {
-          setActiveSection("home");
-        } else if (
-          portfolioSection &&
-          scrollPosition >= portfolioSection.offsetTop &&
-          scrollPosition < (contactSection?.offsetTop || 0)
-        ) {
-          setActiveSection("portfolio");
-        } else if (contactSection && scrollPosition >= contactSection.offsetTop) {
-          setActiveSection("contact");
-        }
-      };
+    const handleScroll = () => {
+      const homeSection = document.getElementById("home");
+      const portfolioSection = document.getElementById("portfolio");
+      const contactSection = document.getElementById("contact");
       
-      window.addEventListener("scroll", handleScroll);
-      return () => window.removeEventListener("scroll", handleScroll);
-    } else {
-      // Set active section based on current route
-      if (location.pathname === "/tech-insights") {
-        setActiveSection("tech-insights");
+      const scrollPosition = window.scrollY + 100;
+      
+      if (
+        homeSection &&
+        scrollPosition >= homeSection.offsetTop &&
+        scrollPosition < (portfolioSection?.offsetTop || 0)
+      ) {
+        setActiveSection("home");
+      } else if (
+        portfolioSection &&
+        scrollPosition >= portfolioSection.offsetTop &&
+        scrollPosition < (contactSection?.offsetTop || 0)
+      ) {
+        setActiveSection("portfolio");
+      } else if (contactSection && scrollPosition >= contactSection.offsetTop) {
+        setActiveSection("contact");
       }
+    };
+    
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+  
+  const scrollToSection = (sectionId: string) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth" });
     }
-  }, [location.pathname]);
+    setIsMenuOpen(false);
+  };
   
   return (
     <nav className="fixed top-0 left-0 w-full bg-black/90 py-4 px-4 z-50">
@@ -58,40 +56,28 @@ const Navbar = () => {
           isMenuOpen ? "md:relative absolute top-16 left-0 w-full bg-black/90 p-4 space-y-4" : "md:relative relative md:flex hidden"
         }`}>
           <li>
-            <a 
-              href="/" 
+            <button 
+              onClick={() => scrollToSection("home")}
               className={`text-lg font-bold hover:text-orange-400 transition-colors ${activeSection === "home" ? "text-orange-400" : "text-white"}`}
-              onClick={() => setIsMenuOpen(false)}
             >
               Home
-            </a>
+            </button>
           </li>
           <li>
-            <a 
-              href="/#portfolio" 
+            <button 
+              onClick={() => scrollToSection("portfolio")}
               className={`text-lg font-bold hover:text-orange-400 transition-colors ${activeSection === "portfolio" ? "text-orange-400" : "text-white"}`}
-              onClick={() => setIsMenuOpen(false)}
             >
               Portfolio
-            </a>
+            </button>
           </li>
           <li>
-            <a 
-              href="/tech-insights" 
-              className={`text-lg font-bold hover:text-orange-400 transition-colors ${activeSection === "tech-insights" ? "text-orange-400" : "text-white"}`}
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Tech Insights
-            </a>
-          </li>
-          <li>
-            <a 
-              href="/#contact" 
+            <button 
+              onClick={() => scrollToSection("contact")}
               className={`text-lg font-bold hover:text-orange-400 transition-colors ${activeSection === "contact" ? "text-orange-400" : "text-white"}`}
-              onClick={() => setIsMenuOpen(false)}
             >
               Contact
-            </a>
+            </button>
           </li>
         </ul>
       </div>
