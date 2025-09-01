@@ -18,17 +18,17 @@ jobs:
       - name: Check if TEST_REPO_TOKEN exists
         run: |
           if [ -z "${{ secrets.TEST_REPO_TOKEN }}" ]; then
-            echo "TEST_REPO_TOKEN secret is not configured"
-            echo "Please add it in Settings → Secrets and variables → Actions"
+            echo "ERROR: TEST_REPO_TOKEN secret is not configured"
+            echo "Please add it in Settings -> Secrets and variables -> Actions"
             exit 1
           else
-            echo "TEST_REPO_TOKEN secret is configured"
+            echo "SUCCESS: TEST_REPO_TOKEN secret is configured"
           fi
       
       - name: Wait for GitHub Pages deployment (if triggered by workflow_run)
         if: github.event_name == 'workflow_run'
         run: |
-          echo "⏳ Waiting for GitHub Pages to update..."
+          echo "Waiting for GitHub Pages to update..."
           sleep 30  # Give GitHub Pages time to deploy
       
       - name: Trigger tests in test repository
@@ -48,29 +48,50 @@ jobs:
             PUSHER="${{ github.event.head_commit.author.name }}"
           fi
           
+          # Use jq to properly escape JSON values (safer than sed)
+          COMMIT_MESSAGE_ESCAPED=$(echo "$COMMIT_MESSAGE" | jq -R .)
+          PUSHER_ESCAPED=$(echo "$PUSHER" | jq -R .)
+          
           echo "Payload details:"
           echo "  - Commit SHA: $COMMIT_SHA"
           echo "  - Branch: $BRANCH"
-          echo "  - Pusher: $PUSHER"
+          echo "  - Pusher: $PUSHER_ESCAPED"
           echo "  - Event type: ${{ github.event_name }}"
+          echo "  - Commit Message: $COMMIT_MESSAGE_ESCAPED"
+          
+          # Create JSON payload using jq for proper JSON generation
+          jq -n \
+            --arg event_type "portfolio-updated" \
+            --arg portfolio_url "https://arijit06.github.io/ArijitSinghaRoy/" \
+            --arg commit_sha "$COMMIT_SHA" \
+            --arg commit_message "$COMMIT_MESSAGE" \
+            --arg branch "$BRANCH" \
+            --arg pusher "$PUSHER" \
+            --arg triggered_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg source_repo "${{ github.repository }}" \
+            '{
+              "event_type": $event_type,
+              "client_payload": {
+                "portfolio_url": $portfolio_url,
+                "commit_sha": $commit_sha,
+                "commit_message": $commit_message,
+                "branch": $branch,
+                "pusher": $pusher,
+                "triggered_at": $triggered_at,
+                "source_repo": $source_repo
+              }
+            }' > payload.json
+          
+          echo "Generated JSON payload:"
+          cat payload.json
+          echo ""
           
           response=$(curl -s -w "HTTP_STATUS:%{http_code}" -X POST \
           -H "Authorization: token ${{ secrets.TEST_REPO_TOKEN }}" \
           -H "Accept: application/vnd.github.v3+json" \
           -H "Content-Type: application/json" \
           https://api.github.com/repos/Arijit06/CI-CD-Integration-with-Selenium-Java-/dispatches \
-          -d "{
-            \"event_type\": \"portfolio-updated\",
-            \"client_payload\": {
-              \"portfolio_url\": \"https://arijit06.github.io/ArijitSinghaRoy/\",
-              \"commit_sha\": \"$COMMIT_SHA\",
-              \"commit_message\": \"$COMMIT_MESSAGE\",
-              \"branch\": \"$BRANCH\",
-              \"pusher\": \"$PUSHER\",
-              \"triggered_at\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
-              \"source_repo\": \"${{ github.repository }}\"
-            }
-          }")
+          --data @payload.json)
           
           # Extract HTTP status
           http_status=$(echo $response | grep -o "HTTP_STATUS:[0-9]*" | cut -d: -f2)
@@ -79,10 +100,10 @@ jobs:
           echo "HTTP Response Status: $http_status"
           
           if [ "$http_status" -eq 204 ]; then
-            echo "Test trigger sent successfully!"
+            echo "SUCCESS: Test trigger sent successfully!"
             echo "The test repository should now start running portfolio tests."
           else
-            echo "Failed to trigger tests. HTTP Status: $http_status"
+            echo "ERROR: Failed to trigger tests. HTTP Status: $http_status"
             echo "Response: $body"
             exit 1
           fi
@@ -105,14 +126,14 @@ jobs:
           echo ""
           echo "Verify the integration worked:"
           echo ""
-          echo "1. **Check Test Repository Actions:**"
+          echo "1. Check Test Repository Actions:"
           echo "   https://github.com/Arijit06/CI-CD-Integration-with-Selenium-Java-/actions"
           echo ""
-          echo "2. **Look for 'Portfolio Tests - Cross Repository Trigger' workflow run**"
+          echo "2. Look for 'Portfolio Tests - Cross Repository Trigger' workflow run"
           echo "   - Should show as 'Running' or 'Completed'"
           echo "   - Check the timestamp matches this trigger"
           echo ""
-          echo "3. **Verify payload was received:**"
+          echo "3. Verify payload was received:"
           echo "   - Open the test workflow run"
           echo "   - Check 'Display trigger information' step"
           echo "   - Should show your commit details"
