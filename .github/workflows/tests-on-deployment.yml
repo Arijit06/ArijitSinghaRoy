@@ -1,114 +1,113 @@
-name: Trigger Portfolio Tests
+name: Debug - Check Target Repository Workflow
 
 on:
-  push:
-    branches: [ main ]  
   workflow_dispatch:
-  workflow_run:  # This triggers after deploy workflow completes
-    workflows: ["Deploy to GitHub Pages"]
-    types:
-      - completed
+  push:
+    branches: [ main ]
 
 jobs:
-  trigger-tests:
+  debug-target-repo:
     runs-on: ubuntu-latest
-    # Only run if the previous workflow succeeded
-    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name != 'workflow_run' }}
     steps:
-      - name: Check if TEST_REPO_TOKEN exists
+      - name: Check if target workflow file exists
         run: |
-          if [ -z "${{ secrets.TEST_REPO_TOKEN }}" ]; then
-            echo "TEST_REPO_TOKEN secret is not configured"
-            exit 1
-          else
-            echo "TEST_REPO_TOKEN secret is configured"
-          fi
-      
-      - name: Wait for GitHub Pages deployment (if triggered by workflow_run)
-        if: github.event_name == 'workflow_run'
+          echo "🔍 Checking if workflow file exists in target repository..."
+          
+          # Check the main branch for workflow files
+          response=$(curl -s -H "Authorization: token ${{ secrets.TEST_REPO_TOKEN }}" \
+            "https://api.github.com/repos/Arijit06/CI-CD-Integration-with-Selenium-Java-/contents/.github/workflows")
+          
+          echo "Workflow files in target repository:"
+          echo "$response" | jq -r '.[].name' 2>/dev/null || echo "No workflow files found or error occurred"
+          
+      - name: Check specific workflow file
         run: |
-          echo "⏳ Waiting for GitHub Pages to update..."
-          sleep 30  # Give GitHub Pages time to deploy
-      
-      - name: Trigger tests in test repository
-        run: |
-          echo "🚀 Triggering tests for portfolio update..."
+          echo "🔍 Checking for test-on-deployment.yml specifically..."
           
-          # Prepare payload based on event type
-          if [ "${{ github.event_name }}" == "workflow_run" ]; then
-            COMMIT_SHA="${{ github.event.workflow_run.head_sha }}"
-            COMMIT_MESSAGE="${{ github.event.workflow_run.head_commit.message }}"
-            BRANCH="${{ github.event.workflow_run.head_branch }}"
-            PUSHER="${{ github.event.workflow_run.head_commit.author.name }}"
-          else
-            COMMIT_SHA="${{ github.sha }}"
-            COMMIT_MESSAGE="${{ github.event.head_commit.message }}"
-            BRANCH="${{ github.ref_name }}"
-            PUSHER="${{ github.event.head_commit.author.name }}"
-          fi
+          response=$(curl -s -w "HTTP_STATUS:%{http_code}" -H "Authorization: token ${{ secrets.TEST_REPO_TOKEN }}" \
+            "https://api.github.com/repos/Arijit06/CI-CD-Integration-with-Selenium-Java-/contents/.github/workflows/test-on-deployment.yml")
           
-          echo "Payload details:"
-          echo "  - Commit SHA: $COMMIT_SHA"
-          echo "  - Branch: $BRANCH"
-          echo "  - Pusher: $PUSHER"
-          echo "  - Event type: ${{ github.event_name }}"
-          
-          response=$(curl -s -w "HTTP_STATUS:%{http_code}" -X POST \
-          -H "Authorization: token ${{ secrets.TEST_REPO_TOKEN }}" \
-          -H "Accept: application/vnd.github.v3+json" \
-          -H "Content-Type: application/json" \
-          https://api.github.com/repos/Arijit06/CI-CD-Integration-with-Selenium-Java-/dispatches \
-          -d "{
-            \"event_type\": \"portfolio-updated\",
-            \"client_payload\": {
-              \"portfolio_url\": \"https://arijit06.github.io/ArijitSinghaRoy/\",
-              \"commit_sha\": \"$COMMIT_SHA\",
-              \"commit_message\": \"$COMMIT_MESSAGE\",
-              \"branch\": \"$BRANCH\",
-              \"pusher\": \"$PUSHER\",
-              \"triggered_at\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
-              \"source_repo\": \"${{ github.repository }}\"
-            }
-          }")
-          
-          # Extract HTTP status
           http_status=$(echo $response | grep -o "HTTP_STATUS:[0-9]*" | cut -d: -f2)
           body=$(echo $response | sed -E 's/HTTP_STATUS:[0-9]*$//')
           
-          echo "HTTP Response Status: $http_status"
-          
-          if [ "$http_status" -eq 204 ]; then
-            echo "✅ Test trigger sent successfully!"
-            echo "The test repository should now start running portfolio tests."
-          elif [ "$http_status" -eq 404 ]; then
-            echo "Repository dispatch failed with 404"
-            echo "Possible causes:"
-            echo "1. Target repository doesn't have a workflow listening to 'repository_dispatch'"
-            echo "2. Workflow file might not be in the main branch"
-            echo "3. Token might not have access to the repository"
-            echo "Response: $body"
-            exit 1
-          elif [ "$http_status" -eq 401 ]; then
-            echo "Authorization failed (401)"
-            echo "Check if TEST_REPO_TOKEN has the right permissions:"
-            echo "- repo (full control of repositories)"
-            echo "- workflow (if needed for workflow_dispatch)"
-            echo "Response: $body"
-            exit 1
+          if [ "$http_status" -eq 200 ]; then
+            echo "✅ test-on-deployment.yml exists!"
+            echo "File details:"
+            echo "$body" | jq -r '.name, .path, .sha' 2>/dev/null
           else
-            echo "Unexpected response: HTTP $http_status"
+            echo "❌ test-on-deployment.yml not found (HTTP $http_status)"
             echo "Response: $body"
-            exit 1
+          fi
+          
+      - name: List all workflow files in target repo
+        run: |
+          echo "🔍 Complete list of workflow files..."
+          
+          curl -s -H "Authorization: token ${{ secrets.TEST_REPO_TOKEN }}" \
+            "https://api.github.com/repos/Arijit06/CI-CD-Integration-with-Selenium-Java-/contents/.github/workflows" \
+            | jq -r '.[] | "Name: \(.name), Path: \(.path), Size: \(.size) bytes"' 2>/dev/null || echo "Could not list workflow files"
+      
+      - name: Check repository_dispatch in workflow content
+        run: |
+          echo "🔍 Checking workflow content for repository_dispatch..."
+          
+          # Get the content of the workflow file
+          response=$(curl -s -H "Authorization: token ${{ secrets.TEST_REPO_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3.raw" \
+            "https://api.github.com/repos/Arijit06/CI-CD-Integration-with-Selenium-Java-/contents/.github/workflows/test-on-deployment.yml")
+          
+          if echo "$response" | grep -q "repository_dispatch"; then
+            echo "✅ Found 'repository_dispatch' in workflow file"
+            echo "Lines containing repository_dispatch:"
+            echo "$response" | grep -n "repository_dispatch" || true
+          else
+            echo "❌ 'repository_dispatch' not found in workflow file"
+            echo "First 20 lines of the file:"
+            echo "$response" | head -20
+          fi
+          
+          if echo "$response" | grep -q "portfolio-updated"; then
+            echo "✅ Found 'portfolio-updated' event type"
+          else
+            echo "❌ 'portfolio-updated' event type not found"
           fi
       
-      - name: Confirm trigger sent
+      - name: Test alternative API endpoints
         run: |
-          echo "Portfolio test trigger completed!"
-          echo ""
-          echo "Check test progress at:"
-          echo "https://github.com/Arijit06/CI-CD-Integration-with-Selenium-Java-/actions"
-          echo ""
-          echo "Triggered with:"
-          echo "  - Portfolio URL: https://arijit06.github.io/ArijitSinghaRoy/"
-          echo "  - Event: ${{ github.event_name }}"
-          echo "  - Repository: ${{ github.repository }}"
+          echo "🔍 Testing alternative approaches..."
+          
+          # Try to get repository info
+          echo "Repository info:"
+          curl -s -H "Authorization: token ${{ secrets.TEST_REPO_TOKEN }}" \
+            "https://api.github.com/repos/Arijit06/CI-CD-Integration-with-Selenium-Java-" \
+            | jq -r '.name, .default_branch, .private' 2>/dev/null || echo "Could not get repo info"
+          
+          # Check if there are any workflows at all
+          echo "All workflows:"
+          curl -s -H "Authorization: token ${{ secrets.TEST_REPO_TOKEN }}" \
+            "https://api.github.com/repos/Arijit06/CI-CD-Integration-with-Selenium-Java-/actions/workflows" \
+            | jq -r '.workflows[] | "ID: \(.id), Name: \(.name), Path: \(.path), State: \(.state)"' 2>/dev/null || echo "Could not list workflows"
+      
+      - name: Test repository dispatch manually
+        run: |
+          echo "🧪 Testing repository dispatch with minimal payload..."
+          
+          response=$(curl -s -w "HTTP_STATUS:%{http_code}" -X POST \
+            -H "Authorization: token ${{ secrets.TEST_REPO_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            -H "Content-Type: application/json" \
+            "https://api.github.com/repos/Arijit06/CI-CD-Integration-with-Selenium-Java-/dispatches" \
+            -d '{
+              "event_type": "test-dispatch"
+            }')
+          
+          http_status=$(echo $response | grep -o "HTTP_STATUS:[0-9]*" | cut -d: -f2)
+          body=$(echo $response | sed -E 's/HTTP_STATUS:[0-9]*$//')
+          
+          echo "Test dispatch result: HTTP $http_status"
+          if [ "$http_status" -eq 204 ]; then
+            echo "✅ Repository dispatch endpoint is working!"
+          else
+            echo "❌ Repository dispatch still failing"
+            echo "Response: $body"
+          fi
