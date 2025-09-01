@@ -2,16 +2,32 @@ name: Trigger Portfolio Tests
 
 on:
   push:
-    branches: [ main, master ]  # Adjust to match your default branch name
+    branches: [ main ]  
   workflow_dispatch:
+  workflow_run:  # This triggers after deploy workflow completes
+    workflows: ["Deploy to GitHub Pages"]
+    types:
+      - completed
 
 jobs:
   trigger-tests:
     runs-on: ubuntu-latest
+    # Only run if the previous workflow succeeded
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name != 'workflow_run' }}
     steps:
+      - name: Check if TEST_TRIGGER_TOKEN exists
+        run: |
+          if [ -z "${{ secrets.TEST_REPO_TOKEN }}" ]; then
+            echo "TEST_REPO_TOKEN secret is not configured"
+            exit 1
+          else
+            echo "TEST_TRIGGER_TOKEN secret is configured"
+          fi
+      
       - name: Trigger tests in test repository
         run: |
-          curl -X POST \
+          echo "🚀 Triggering tests for portfolio update..."
+          response=$(curl -s -w "HTTP_STATUS:%{http_code}" -X POST \
           -H "Authorization: token ${{ secrets.TEST_REPO_TOKEN }}" \
           -H "Accept: application/vnd.github.v3+json" \
           https://api.github.com/repos/Arijit06/CI-CD-Integration-with-Selenium-Java-/dispatches \
@@ -20,14 +36,27 @@ jobs:
             "client_payload": {
               "portfolio_url": "https://arijit06.github.io/ArijitSinghaRoy/",
               "commit_sha": "${{ github.sha }}",
-              "commit_message": "${{ github.event.head_commit.message }}",
+              "commit_message": "${{ github.event.head_commit.message || github.event.workflow_run.head_commit.message }}",
               "branch": "${{ github.ref_name }}",
-              "pusher": "${{ github.event.head_commit.author.name }}"
+              "pusher": "${{ github.event.head_commit.author.name || github.event.workflow_run.head_commit.author.name }}"
             }
-          }'
+          }')
+          
+          # Extract HTTP status
+          http_status=$(echo $response | grep -o "HTTP_STATUS:[0-9]*" | cut -d: -f2)
+          body=$(echo $response | sed -E 's/HTTP_STATUS:[0-9]*$//')
+          
+          if [ "$http_status" -eq 204 ]; then
+            echo "Test trigger sent successfully"
+          else
+            echo "Failed to trigger tests. HTTP Status: $http_status"
+            echo "Response: $body"
+            exit 1
+          fi
       
       - name: Confirm trigger sent
         run: |
           echo "✅ Test trigger sent to test repository"
           echo "Portfolio URL: https://arijit06.github.io/ArijitSinghaRoy/"
           echo "Commit SHA: ${{ github.sha }}"
+          echo "Trigger Type: ${{ github.event_name }}"
